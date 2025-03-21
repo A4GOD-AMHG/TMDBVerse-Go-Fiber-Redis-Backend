@@ -1,0 +1,64 @@
+basePath: /
+definitions:
+  models.Movie:
+    properties:
+      id:
+        type: integer
+      overview:
+        type: string
+      popularity:
+        type: number
+      poster_path:
+        type: string
+      release_date:
+        type: string
+      title:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API proxy for The Movie DB
+  title: TMDBZone-Go-Fiber-Backend
+  version: "1.0"
+paths:
+  /discover:
+    get:
+      consumes:
+      - application/json
+      description: Get movies from discover endpoint
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Movie'
+            type: array
+      summary: Get discover movies
+      tags:
+      - movies
+  /popular:
+    get:
+      consumes:
+      - application/json
+      description: Get 3 most popular movies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Movie'
+            type: array
+      summary: Get top popular movies
+      tags:
+      - movies
+swagger: "2.0"
