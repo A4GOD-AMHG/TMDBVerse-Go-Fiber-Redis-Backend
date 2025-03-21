@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  tmdbzone-api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - TMDB_API_ACCESS_TOKEN=${TMDB_API_ACCESS_TOKEN}
