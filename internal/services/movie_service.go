@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/config"
 	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/models"
@@ -34,6 +35,27 @@ func (s *MovieService) makeRequest(url string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	return io.ReadAll(resp.Body)
+}
+
+func (s *MovieService) SearchMovies(query string, page string) ([]models.Movie, error) {
+	url := fmt.Sprintf(
+		"%s/search/movie?query=%s&include_adult=false&language=en-US&page=%s",
+		apiBaseURL,
+		url.QueryEscape(query),
+		page,
+	)
+
+	body, err := s.makeRequest(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var response models.MovieResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, err
+	}
+
+	return response.Results, nil
 }
 
 func (s *MovieService) GetDiscoverMovies(page string) ([]models.Movie, error) {

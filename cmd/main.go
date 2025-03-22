@@ -31,12 +31,11 @@ func main() {
 		AllowMethods: "GET",
 	}))
 
-	// Swagger
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	// Routes
 	app.Get("/discover", movieHandler.DiscoverMovies)
 	app.Get("/popular", movieHandler.TopPopularMovies)
+	app.Get("/search", movieHandler.SearchMovies)
 
 	app.Listen(":8080")
 }

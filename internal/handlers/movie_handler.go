@@ -55,3 +55,32 @@ func (h *MovieHandler) TopPopularMovies(c *fiber.Ctx) error {
 
 	return c.JSON(movies)
 }
+
+// @Summary      Search movies
+// @Description  Search movies by title
+// @Tags         movies
+// @Accept       json
+// @Produce      json
+// @Param        q     query     string  true   "Search query"
+// @Param        page  query     string  false  "Page number"
+// @Success      200   {object}  []models.Movie
+// @Router       /search [get]
+func (h *MovieHandler) SearchMovies(c *fiber.Ctx) error {
+	query := c.Query("q")
+	page := c.Query("page", "1")
+
+	if query == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Search query parameter 'q' is required",
+		})
+	}
+
+	movies, err := h.service.SearchMovies(query, page)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(movies)
+}
