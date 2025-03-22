@@ -6,6 +6,7 @@ import (
 	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/handlers"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/swagger"
 )
 
@@ -23,6 +24,12 @@ func main() {
 	app := fiber.New()
 
 	movieHandler := handlers.NewMovieHandler(cfg)
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "http://localhost:5173",
+		AllowHeaders: "Origin, Content-Type, Accept",
+		AllowMethods: "GET",
+	}))
 
 	// Swagger
 	app.Get("/swagger/*", swagger.HandlerDefault)
