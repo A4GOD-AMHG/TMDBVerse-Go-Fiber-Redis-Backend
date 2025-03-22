@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/config"
 	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,9 +10,9 @@ type MovieHandler struct {
 	service *services.MovieService
 }
 
-func NewMovieHandler(cfg *config.Config) *MovieHandler {
+func NewMovieHandler(service *services.MovieService) *MovieHandler {
 	return &MovieHandler{
-		service: services.NewMovieService(cfg),
+		service: service,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/config"
 	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/models"
@@ -15,29 +16,57 @@ const (
 	apiBaseURL = "https://api.themoviedb.org/3"
 )
 
-type MovieService struct {
-	cfg *config.Config
+var httpClient = &http.Client{
+	Timeout: 5 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     30 * time.Second,
+	},
 }
 
-func NewMovieService(cfg *config.Config) *MovieService {
-	return &MovieService{cfg: cfg}
+type MovieService struct {
+	cfg   *config.Config
+	cache *CacheService
+}
+
+func NewMovieService(cfg *config.Config, cache *CacheService) *MovieService {
+	return &MovieService{
+		cfg:   cfg,
+		cache: cache,
+	}
 }
 
 func (s *MovieService) makeRequest(url string) ([]byte, error) {
-	client := &http.Client{}
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.cfg.AccessToken))
+	result, err := cb.Execute(func() (interface{}, error) {
+		req, _ := http.NewRequest("GET", url, nil)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.cfg.AccessToken))
 
-	resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		return io.ReadAll(resp.Body)
+	})
+
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	return io.ReadAll(resp.Body)
+	return result.([]byte), nil
 }
 
 func (s *MovieService) SearchMovies(query string, page string) ([]models.Movie, error) {
+	cacheKey := fmt.Sprintf("search:%s:%s", query, page)
+	if cached, err := s.cache.Get(cacheKey); err == nil {
+		var movies []models.Movie
+		if json.Unmarshal(cached, &movies) == nil {
+			return movies, nil
+		}
+	}
+
 	url := fmt.Sprintf(
 		"%s/search/movie?query=%s&include_adult=false&language=en-US&page=%s",
 		apiBaseURL,
@@ -53,6 +82,10 @@ func (s *MovieService) SearchMovies(query string, page string) ([]models.Movie, 
 	var response models.MovieResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return nil, err
+	}
+
+	if data, err := json.Marshal(response.Results); err == nil {
+		s.cache.Set(cacheKey, data, time.Hour)
 	}
 
 	return response.Results, nil
