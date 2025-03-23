@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/services"
+	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 )

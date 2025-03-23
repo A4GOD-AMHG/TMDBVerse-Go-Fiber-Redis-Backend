@@ -8,12 +8,12 @@ import (
 )
 
 type CacheService struct {
-	client *redis.Client
+	Client *redis.Client
 }
 
 func NewCacheService(addr string) *CacheService {
 	return &CacheService{
-		client: redis.NewClient(&redis.Options{
+		Client: redis.NewClient(&redis.Options{
 			Addr:     addr,
 			Password: "",
 			DB:       0,
@@ -23,10 +23,10 @@ func NewCacheService(addr string) *CacheService {
 
 func (c *CacheService) Get(key string) ([]byte, error) {
 	ctx := context.Background()
-	return c.client.Get(ctx, key).Bytes()
+	return c.Client.Get(ctx, key).Bytes()
 }
 
 func (c *CacheService) Set(key string, value []byte, ttl time.Duration) error {
 	ctx := context.Background()
-	return c.client.Set(ctx, key, value, ttl).Err()
+	return c.Client.Set(ctx, key, value, ttl).Err()
 }

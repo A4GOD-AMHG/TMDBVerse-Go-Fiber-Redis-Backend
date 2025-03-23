@@ -1,4 +1,4 @@
-module github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend
+module github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend
 
 go 1.24.1
 

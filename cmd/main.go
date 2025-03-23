@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
+	"log"
 	"os"
 	"time"
 
-	_ "github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/docs"
-	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/config"
-	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/handlers"
-	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/services"
+	_ "github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/docs"
+	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/config"
+	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/handlers"
+	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -28,6 +30,14 @@ func main() {
 	app := fiber.New()
 
 	cacheService := services.NewCacheService(os.Getenv("REDIS_URL"))
+
+	ctx := context.Background()
+	_, err := cacheService.Client.Ping(ctx).Result()
+	if err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+
+	log.Println("Connected to Redis successfully")
 	movieService := services.NewMovieService(cfg, cacheService)
 	movieHandler := handlers.NewMovieHandler(movieService)
 

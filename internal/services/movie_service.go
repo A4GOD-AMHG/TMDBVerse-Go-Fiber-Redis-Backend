@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/config"
-	"github.com/A4GOD-AMHG/TMDBZone-Go-Fiber-Backend/internal/models"
+	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/config"
+	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/models"
 )
 
 const (
