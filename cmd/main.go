@@ -10,6 +10,7 @@ import (
 	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/config"
 	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/handlers"
 	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/services"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -27,22 +28,28 @@ func main() {
 		panic("TMDB_API_ACCESS_TOKEN environment variable is required")
 	}
 
-	app := fiber.New()
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     os.Getenv("REDIS_URL"),
+		Password: "",
+		DB:       0,
+	})
 
-	cacheService := services.NewCacheService(os.Getenv("REDIS_URL"))
+	log.SetOutput(os.Stdout)
 
-	ctx := context.Background()
-	_, err := cacheService.Client.Ping(ctx).Result()
-	if err != nil {
-		log.Fatalf("Could not connect to Redis: %v", err)
+	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
+		log.Fatalf("Error connecting to Redis: %v", err)
 	}
 
 	log.Println("Connected to Redis successfully")
-	movieService := services.NewMovieService(cfg, cacheService)
+
+	cacheService := services.NewCacheService(rdb)
+	movieService := services.NewMovieService(cfg, cacheService, rdb)
 	movieHandler := handlers.NewMovieHandler(movieService)
 
+	app := fiber.New()
+
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:5173",
+		AllowOrigins: "*",
 		AllowHeaders: "Origin, Content-Type, Accept",
 		AllowMethods: "GET",
 	}))
@@ -52,6 +59,7 @@ func main() {
 	app.Get("/discover", handlers.CacheMiddleware(cacheService, 10*time.Minute), movieHandler.DiscoverMovies)
 	app.Get("/popular", handlers.CacheMiddleware(cacheService, 30*time.Minute), movieHandler.TopPopularMovies)
 	app.Get("/search", handlers.CacheMiddleware(cacheService, 1*time.Hour), movieHandler.SearchMovies)
+	app.Get("/trending", handlers.CacheMiddleware(cacheService, 30*time.Minute), movieHandler.TrendingMovies)
 
 	app.Listen(":8080")
 }

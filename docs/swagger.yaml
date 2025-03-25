@@ -4,13 +4,24 @@ definitions:
     properties:
       id:
         type: integer
+      original_language:
+        type: string
       overview:
         type: string
-      popularity:
-        type: number
       poster_path:
         type: string
       release_date:
+        type: string
+      title:
+        type: string
+      vote_average:
+        type: number
+    type: object
+  models.TrendingMovie:
+    properties:
+      id:
+        type: integer
+      poster_path:
         type: string
       title:
         type: string
@@ -59,6 +70,50 @@ paths:
               $ref: '#/definitions/models.Movie'
             type: array
       summary: Get top popular movies
+      tags:
+      - movies
+  /search:
+    get:
+      consumes:
+      - application/json
+      description: Search movies by title
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Movie'
+            type: array
+      summary: Search movies
+      tags:
+      - movies
+  /trending:
+    get:
+      consumes:
+      - application/json
+      description: Get top 5 trending movies based on searches
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TrendingMovie'
+            type: array
+      summary: Get trending movies
       tags:
       - movies
 swagger: "2.0"

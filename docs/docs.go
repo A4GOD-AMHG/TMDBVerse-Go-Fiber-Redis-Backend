@@ -74,6 +74,73 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/search": {
+            "get": {
+                "description": "Search movies by title",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "movies"
+                ],
+                "summary": "Search movies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Movie"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/trending": {
+            "get": {
+                "description": "Get top 5 trending movies based on searches",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "movies"
+                ],
+                "summary": "Get trending movies",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TrendingMovie"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -83,16 +150,33 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "overview": {
+                "original_language": {
                     "type": "string"
                 },
-                "popularity": {
-                    "type": "number"
+                "overview": {
+                    "type": "string"
                 },
                 "poster_path": {
                     "type": "string"
                 },
                 "release_date": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "vote_average": {
+                    "type": "number"
+                }
+            }
+        },
+        "models.TrendingMovie": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "poster_path": {
                     "type": "string"
                 },
                 "title": {

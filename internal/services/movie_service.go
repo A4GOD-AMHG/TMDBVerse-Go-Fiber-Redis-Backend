@@ -1,19 +1,25 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/config"
 	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/models"
+	"github.com/go-redis/redis/v8"
 )
 
 const (
-	apiBaseURL = "https://api.themoviedb.org/3"
+	apiBaseURL    = "https://api.themoviedb.org/3"
+	searchZSetKey = "movie_searches"
+	metadataKey   = "movie_metadata"
 )
 
 var httpClient = &http.Client{
@@ -28,12 +34,14 @@ var httpClient = &http.Client{
 type MovieService struct {
 	cfg   *config.Config
 	cache *CacheService
+	redis *redis.Client
 }
 
-func NewMovieService(cfg *config.Config, cache *CacheService) *MovieService {
+func NewMovieService(cfg *config.Config, cache *CacheService, rdb *redis.Client) *MovieService {
 	return &MovieService{
 		cfg:   cfg,
 		cache: cache,
+		redis: rdb,
 	}
 }
 
@@ -56,6 +64,67 @@ func (s *MovieService) makeRequest(url string) ([]byte, error) {
 	}
 
 	return result.([]byte), nil
+}
+
+func (s *MovieService) logSearch(movie models.Movie) error {
+	ctx := context.Background()
+
+	member := fmt.Sprintf("%d", movie.ID)
+
+	err := s.redis.ZIncrBy(ctx, searchZSetKey, 1, member).Err()
+	if err != nil {
+		log.Printf("Error incrementing search count: %v", err)
+		return err
+	}
+
+	movieData := map[string]interface{}{
+		"title":       movie.Title,
+		"poster_path": movie.PosterPath,
+	}
+	err = s.redis.HSet(ctx, metadataKey, member, movieData).Err()
+	if err != nil {
+		log.Printf("Error saving movie metadata: %v", err)
+	}
+
+	s.redis.Expire(ctx, searchZSetKey, 30*time.Minute)
+	s.redis.Expire(ctx, metadataKey, 30*time.Minute)
+
+	return nil
+}
+
+func (s *MovieService) GetTrendingMovies() ([]models.TrendingMovie, error) {
+	ctx := context.Background()
+
+	results, err := s.redis.ZRevRangeWithScores(ctx, searchZSetKey, 0, 4).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var trendingMovies []models.TrendingMovie
+
+	for _, result := range results {
+		member := result.Member.(string)
+
+		movieData, err := s.redis.HGet(ctx, metadataKey, member).Result()
+		if err != nil {
+			continue
+		}
+
+		var data map[string]string
+		if err := json.Unmarshal([]byte(movieData), &data); err != nil {
+			continue
+		}
+		id, _ := strconv.Atoi(member)
+		movie := models.TrendingMovie{
+			ID:          id,
+			Title:       data["title"],
+			PosterPath:  data["poster_path"],
+			SearchCount: int(result.Score),
+		}
+		trendingMovies = append(trendingMovies, movie)
+	}
+
+	return trendingMovies, nil
 }
 
 func (s *MovieService) SearchMovies(query string, page string) ([]models.Movie, error) {
@@ -86,6 +155,12 @@ func (s *MovieService) SearchMovies(query string, page string) ([]models.Movie, 
 
 	if data, err := json.Marshal(response.Results); err == nil {
 		s.cache.Set(cacheKey, data, time.Hour)
+	}
+
+	if len(response.Results) > 0 {
+		go func() {
+			s.logSearch(response.Results[0])
+		}()
 	}
 
 	return response.Results, nil

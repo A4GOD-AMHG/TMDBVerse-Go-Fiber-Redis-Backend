@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"time"
 
 	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/services"
@@ -14,7 +13,6 @@ func CacheMiddleware(cache *services.CacheService, ttl time.Duration) fiber.Hand
 
 		if cached, err := cache.Get(cacheKey); err == nil {
 			c.Response().Header.SetContentType("application/json")
-			log.Println(cached)
 			return c.Send(cached)
 		}
 

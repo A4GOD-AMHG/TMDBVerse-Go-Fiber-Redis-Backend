@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/models"
 	"github.com/A4GOD-AMHG/TMDBVerse-Go-Fiber-Redis-Backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -79,6 +80,28 @@ func (h *MovieHandler) SearchMovies(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
+	}
+
+	return c.JSON(movies)
+}
+
+// @Summary      Get trending movies
+// @Description  Get top 5 trending movies based on searches
+// @Tags         movies
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  []models.TrendingMovie
+// @Router       /trending [get]
+func (h *MovieHandler) TrendingMovies(c *fiber.Ctx) error {
+	movies, err := h.service.GetTrendingMovies()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if movies == nil {
+		movies = []models.TrendingMovie{}
 	}
 
 	return c.JSON(movies)

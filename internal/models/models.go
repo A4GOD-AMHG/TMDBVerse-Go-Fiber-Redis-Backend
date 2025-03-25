@@ -10,6 +10,13 @@ type Movie struct {
 	VoteAverage      float64 `json:"vote_average"`
 }
 
+type TrendingMovie struct {
+	ID          int    `json:"id"`
+	Title       string `json:"title"`
+	PosterPath  string `json:"poster_path"`
+	SearchCount int    `json:"search_count"`
+}
+
 type MovieResponse struct {
 	Page       int     `json:"page"`
 	Results    []Movie `json:"results"`
