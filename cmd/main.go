@@ -17,7 +17,7 @@ import (
 	"github.com/gofiber/swagger"
 )
 
-// @title           TMDBZone-Go-Fiber-Backend
+// @title           TMDBZone-Go-Fiber-Redis-Backend
 // @version         1.0
 // @description     API proxy for The Movie DB
 // @host            localhost:8080
