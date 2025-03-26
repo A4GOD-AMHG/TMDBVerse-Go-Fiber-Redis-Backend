@@ -1,4 +1,5 @@
 # TMDBVerse-Go-Fiber-Redis-Backend
+
 This is the backend of The MovieDB Verse project, it contains integration with The Movie DB Api.
 
 ## Tech Stack
@@ -32,7 +33,7 @@ This is the backend of The MovieDB Verse project, it contains integration with T
 
 2. **Configure environment variables:**
 
-- Change name of the example environment file .env.example to .env:
+- Change name of the example environment file example.env to .env:
 
 - Edit the .env file with your credentials:
 
@@ -50,7 +51,6 @@ docker-compose up --build
 ## Frontend Setup
 
 For the React frontend implementation, please go to the [TMDBVerse-React-TailwindCSS-Frontend](<https://github.com/A4GOD-AMHG/TMDBVerse-React-TailwindCSS-Frontend.git>)
-
 
 ## Screenshots
 
