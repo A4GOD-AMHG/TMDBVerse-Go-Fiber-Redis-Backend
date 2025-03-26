@@ -8,13 +8,7 @@ type Movie struct {
 	ReleaseDate      string  `json:"release_date"`
 	OriginalLanguage string  `json:"original_language"`
 	VoteAverage      float64 `json:"vote_average"`
-}
-
-type TrendingMovie struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	PosterPath  string `json:"poster_path"`
-	SearchCount int    `json:"search_count"`
+	SearchCount      int     `json:"search_count,omitempty"`
 }
 
 type MovieResponse struct {

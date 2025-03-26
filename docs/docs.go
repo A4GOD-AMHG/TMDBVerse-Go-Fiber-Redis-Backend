@@ -45,6 +45,56 @@ const docTemplate = `{
                                 "$ref": "#/definitions/models.Movie"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/movies/{id}": {
+            "get": {
+                "description": "Get complete details for a specific movie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "movies"
+                ],
+                "summary": "Get movie details",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Movie ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Movie"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 }
             }
@@ -70,6 +120,12 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/models.Movie"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object"
                         }
                     }
                 }
@@ -112,6 +168,12 @@ const docTemplate = `{
                                 "$ref": "#/definitions/models.Movie"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 }
             }
@@ -135,8 +197,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.TrendingMovie"
+                                "$ref": "#/definitions/models.Movie"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object"
                         }
                     }
                 }
@@ -162,25 +230,14 @@ const docTemplate = `{
                 "release_date": {
                     "type": "string"
                 },
+                "search_count": {
+                    "type": "integer"
+                },
                 "title": {
                     "type": "string"
                 },
                 "vote_average": {
                     "type": "number"
-                }
-            }
-        },
-        "models.TrendingMovie": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "poster_path": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
                 }
             }
         }

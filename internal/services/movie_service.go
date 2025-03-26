@@ -68,60 +68,65 @@ func (s *MovieService) makeRequest(url string) ([]byte, error) {
 
 func (s *MovieService) logSearch(movie models.Movie) error {
 	ctx := context.Background()
+	member := strconv.Itoa(movie.ID)
 
-	member := fmt.Sprintf("%d", movie.ID)
-
-	err := s.redis.ZIncrBy(ctx, searchZSetKey, 1, member).Err()
+	_, err := s.redis.ZIncrBy(ctx, searchZSetKey, 1, member).Result()
 	if err != nil {
-		log.Printf("Error incrementing search count: %v", err)
+		log.Printf("Error increasing counter: %v", err)
 		return err
 	}
 
-	movieData := map[string]interface{}{
-		"title":       movie.Title,
-		"poster_path": movie.PosterPath,
-	}
-	err = s.redis.HSet(ctx, metadataKey, member, movieData).Err()
-	if err != nil {
-		log.Printf("Error saving movie metadata: %v", err)
-	}
-
 	s.redis.Expire(ctx, searchZSetKey, 30*time.Minute)
-	s.redis.Expire(ctx, metadataKey, 30*time.Minute)
-
 	return nil
 }
 
-func (s *MovieService) GetTrendingMovies() ([]models.TrendingMovie, error) {
-	ctx := context.Background()
+func (s *MovieService) GetMovieDetails(id int) (*models.Movie, error) {
+	cacheKey := fmt.Sprintf("movie:%d", id)
 
+	url := fmt.Sprintf("%s/movie/%d", apiBaseURL, id)
+	body, err := s.makeRequest(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var movie models.Movie
+	if err := json.Unmarshal(body, &movie); err != nil {
+		return nil, err
+	}
+
+	if data, err := json.Marshal(movie); err == nil {
+		s.cache.Set(cacheKey, data, 1*time.Hour)
+	}
+
+	return &movie, nil
+}
+
+func (s *MovieService) GetTrendingMovies() ([]models.Movie, error) {
+	ctx := context.Background()
 	results, err := s.redis.ZRevRangeWithScores(ctx, searchZSetKey, 0, 4).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	var trendingMovies []models.TrendingMovie
-
+	var trendingMovies []models.Movie
 	for _, result := range results {
-		member := result.Member.(string)
+		idStr, ok := result.Member.(string)
+		if !ok {
+			continue
+		}
 
-		movieData, err := s.redis.HGet(ctx, metadataKey, member).Result()
+		id, err := strconv.Atoi(idStr)
 		if err != nil {
 			continue
 		}
 
-		var data map[string]string
-		if err := json.Unmarshal([]byte(movieData), &data); err != nil {
+		movie, err := s.GetMovieDetails(id)
+		if err != nil {
 			continue
 		}
-		id, _ := strconv.Atoi(member)
-		movie := models.TrendingMovie{
-			ID:          id,
-			Title:       data["title"],
-			PosterPath:  data["poster_path"],
-			SearchCount: int(result.Score),
-		}
-		trendingMovies = append(trendingMovies, movie)
+
+		movie.SearchCount = int(result.Score)
+		trendingMovies = append(trendingMovies, *movie)
 	}
 
 	return trendingMovies, nil

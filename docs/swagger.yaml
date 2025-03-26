@@ -12,19 +12,12 @@ definitions:
         type: string
       release_date:
         type: string
+      search_count:
+        type: integer
       title:
         type: string
       vote_average:
         type: number
-    type: object
-  models.TrendingMovie:
-    properties:
-      id:
-        type: integer
-      poster_path:
-        type: string
-      title:
-        type: string
     type: object
 host: localhost:8080
 info:
@@ -52,7 +45,40 @@ paths:
             items:
               $ref: '#/definitions/models.Movie'
             type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: object
       summary: Get discover movies
+      tags:
+      - movies
+  /movies/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get complete details for a specific movie
+      parameters:
+      - description: Movie ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Movie'
+        "400":
+          description: Invalid ID
+          schema:
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            type: object
+      summary: Get movie details
       tags:
       - movies
   /popular:
@@ -69,6 +95,10 @@ paths:
             items:
               $ref: '#/definitions/models.Movie'
             type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: object
       summary: Get top popular movies
       tags:
       - movies
@@ -96,6 +126,10 @@ paths:
             items:
               $ref: '#/definitions/models.Movie'
             type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: object
       summary: Search movies
       tags:
       - movies
@@ -111,8 +145,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.TrendingMovie'
+              $ref: '#/definitions/models.Movie'
             type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: object
       summary: Get trending movies
       tags:
       - movies

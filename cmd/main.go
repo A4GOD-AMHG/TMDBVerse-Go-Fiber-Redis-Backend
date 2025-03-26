@@ -58,8 +58,9 @@ func main() {
 
 	app.Get("/discover", handlers.CacheMiddleware(cacheService, 10*time.Minute), movieHandler.DiscoverMovies)
 	app.Get("/popular", handlers.CacheMiddleware(cacheService, 30*time.Minute), movieHandler.TopPopularMovies)
-	app.Get("/search", handlers.CacheMiddleware(cacheService, 1*time.Hour), movieHandler.SearchMovies)
-	app.Get("/trending", handlers.CacheMiddleware(cacheService, 30*time.Minute), movieHandler.TrendingMovies)
+	app.Get("/movies/:id", handlers.CacheMiddleware(cacheService, 30*time.Minute), movieHandler.MovieDetails)
+	app.Get("/search", movieHandler.SearchMovies)
+	app.Get("/trending", movieHandler.TrendingMovies)
 
 	app.Listen(":8080")
 }
