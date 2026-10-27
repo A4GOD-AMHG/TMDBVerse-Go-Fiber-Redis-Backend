@@ -19,7 +19,6 @@ import (
 const (
 	apiBaseURL    = "https://api.themoviedb.org/3"
 	searchZSetKey = "movie_searches"
-	metadataKey   = "movie_metadata"
 )
 
 var httpClient = &http.Client{
@@ -45,10 +44,18 @@ func NewMovieService(cfg *config.Config, cache *CacheService, rdb *redis.Client)
 	}
 }
 
+type upstreamResponse struct {
+	status int
+	body   []byte
+}
+
 func (s *MovieService) makeRequest(url string) ([]byte, error) {
 	result, err := cb.Execute(func() (interface{}, error) {
-		req, _ := http.NewRequest("GET", url, nil)
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.cfg.AccessToken))
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Add("Authorization", "Bearer "+s.cfg.AccessToken)
 
 		resp, err := httpClient.Do(req)
 		if err != nil {
@@ -56,59 +63,82 @@ func (s *MovieService) makeRequest(url string) ([]byte, error) {
 		}
 		defer resp.Body.Close()
 
-		return io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		// Only 5xx count as breaker failures; 4xx (e.g. unknown movie) are client errors.
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return nil, &UpstreamError{Status: resp.StatusCode}
+		}
+		return upstreamResponse{status: resp.StatusCode, body: body}, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	return result.([]byte), nil
-}
-
-func (s *MovieService) logSearch(movie models.Movie) error {
-	ctx := context.Background()
-	member := strconv.Itoa(movie.ID)
-
-	_, err := s.redis.ZIncrBy(ctx, searchZSetKey, 1, member).Result()
-	if err != nil {
-		log.Printf("Error increasing counter: %v", err)
-		return err
+	res := result.(upstreamResponse)
+	if res.status != http.StatusOK {
+		return nil, &UpstreamError{Status: res.status}
 	}
-
-	s.redis.Expire(ctx, searchZSetKey, 30*time.Minute)
-	return nil
+	return res.body, nil
 }
 
-func (s *MovieService) GetMovieDetails(id int) (*models.Movie, error) {
-	cacheKey := fmt.Sprintf("movie:%d", id)
-
-	url := fmt.Sprintf("%s/movie/%d", apiBaseURL, id)
+func (s *MovieService) fetchMovieList(url string) ([]models.Movie, error) {
 	body, err := s.makeRequest(url)
 	if err != nil {
 		return nil, err
 	}
 
+	var response models.MovieResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, err
+	}
+	if response.Results == nil {
+		return []models.Movie{}, nil
+	}
+	return response.Results, nil
+}
+
+func (s *MovieService) logSearch(movie models.Movie) {
+	ctx := context.Background()
+	if err := s.redis.ZIncrBy(ctx, searchZSetKey, 1, strconv.Itoa(movie.ID)).Err(); err != nil {
+		log.Printf("error increasing search counter: %v", err)
+		return
+	}
+	s.redis.Expire(ctx, searchZSetKey, 30*time.Minute)
+}
+
+func (s *MovieService) GetMovieDetails(id int) (*models.Movie, error) {
+	cacheKey := fmt.Sprintf("movie:%d", id)
+
 	var movie models.Movie
+	if cached, err := s.cache.Get(cacheKey); err == nil && json.Unmarshal(cached, &movie) == nil {
+		return &movie, nil
+	}
+
+	body, err := s.makeRequest(fmt.Sprintf("%s/movie/%d", apiBaseURL, id))
+	if err != nil {
+		return nil, err
+	}
 	if err := json.Unmarshal(body, &movie); err != nil {
 		return nil, err
 	}
 
 	if data, err := json.Marshal(movie); err == nil {
-		s.cache.Set(cacheKey, data, 1*time.Hour)
+		s.cache.Set(cacheKey, data, time.Hour)
 	}
 
 	return &movie, nil
 }
 
 func (s *MovieService) GetTrendingMovies() ([]models.Movie, error) {
-	ctx := context.Background()
-	results, err := s.redis.ZRevRangeWithScores(ctx, searchZSetKey, 0, 4).Result()
+	results, err := s.redis.ZRevRangeWithScores(context.Background(), searchZSetKey, 0, 4).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	var trendingMovies []models.Movie
+	trendingMovies := make([]models.Movie, 0, len(results))
 	for _, result := range results {
 		idStr, ok := result.Member.(string)
 		if !ok {
@@ -132,8 +162,21 @@ func (s *MovieService) GetTrendingMovies() ([]models.Movie, error) {
 	return trendingMovies, nil
 }
 
-func (s *MovieService) SearchMovies(query string, page string) ([]models.Movie, error) {
-	cacheKey := fmt.Sprintf("search:%s:%s", query, page)
+func (s *MovieService) SearchMovies(query string, page int) ([]models.Movie, error) {
+	movies, err := s.searchMovies(query, page)
+	if err != nil {
+		return nil, err
+	}
+
+	// Count every search (cached or not) towards trending.
+	if len(movies) > 0 {
+		go s.logSearch(movies[0])
+	}
+	return movies, nil
+}
+
+func (s *MovieService) searchMovies(query string, page int) ([]models.Movie, error) {
+	cacheKey := fmt.Sprintf("search:%s:%d", query, page)
 	if cached, err := s.cache.Get(cacheKey); err == nil {
 		var movies []models.Movie
 		if json.Unmarshal(cached, &movies) == nil {
@@ -141,71 +184,35 @@ func (s *MovieService) SearchMovies(query string, page string) ([]models.Movie, 
 		}
 	}
 
-	url := fmt.Sprintf(
-		"%s/search/movie?query=%s&include_adult=false&language=en-US&page=%s",
-		apiBaseURL,
-		url.QueryEscape(query),
-		page,
-	)
-
-	body, err := s.makeRequest(url)
+	movies, err := s.fetchMovieList(fmt.Sprintf(
+		"%s/search/movie?query=%s&include_adult=false&language=en-US&page=%d",
+		apiBaseURL, url.QueryEscape(query), page,
+	))
 	if err != nil {
 		return nil, err
 	}
 
-	var response models.MovieResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, err
-	}
-
-	if data, err := json.Marshal(response.Results); err == nil {
+	if data, err := json.Marshal(movies); err == nil {
 		s.cache.Set(cacheKey, data, time.Hour)
 	}
-
-	if len(response.Results) > 0 {
-		go func() {
-			s.logSearch(response.Results[0])
-		}()
-	}
-
-	return response.Results, nil
+	return movies, nil
 }
 
-func (s *MovieService) GetDiscoverMovies(page string) ([]models.Movie, error) {
-	url := fmt.Sprintf(
-		"%s/discover/movie?include_adult=false&include_video=false&language=en-US&page=%s&sort_by=popularity.desc",
-		apiBaseURL,
-		page,
-	)
-
-	body, err := s.makeRequest(url)
-	if err != nil {
-		return nil, err
-	}
-
-	var response models.MovieResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, err
-	}
-
-	return response.Results, nil
+func (s *MovieService) GetDiscoverMovies(page int) ([]models.Movie, error) {
+	return s.fetchMovieList(fmt.Sprintf(
+		"%s/discover/movie?include_adult=false&include_video=false&language=en-US&page=%d&sort_by=popularity.desc",
+		apiBaseURL, page,
+	))
 }
 
 func (s *MovieService) GetTopPopularMovies() ([]models.Movie, error) {
-	url := fmt.Sprintf("%s/movie/popular?language=en-US&page=1", apiBaseURL)
-
-	body, err := s.makeRequest(url)
+	movies, err := s.fetchMovieList(fmt.Sprintf("%s/movie/popular?language=en-US&page=1", apiBaseURL))
 	if err != nil {
 		return nil, err
 	}
 
-	var response models.MovieResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, err
+	if len(movies) > 3 {
+		return movies[:3], nil
 	}
-
-	if len(response.Results) > 3 {
-		return response.Results[:3], nil
-	}
-	return response.Results, nil
+	return movies, nil
 }
