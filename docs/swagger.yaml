@@ -2,31 +2,42 @@ basePath: /
 definitions:
   models.ErrorResponse:
     properties:
-      error: &id001
+      error:
         type: string
     type: object
   models.Genre:
     properties:
-      id: &id002
+      id:
         type: integer
-      name: *id001
+      name:
+        type: string
     type: object
   models.Movie:
     properties:
-      backdrop_path: *id001
+      backdrop_path:
+        type: string
       genres:
         items:
           $ref: '#/definitions/models.Genre'
         type: array
-      id: *id002
-      original_language: *id001
-      original_title: *id001
-      overview: *id001
-      poster_path: *id001
-      release_date: *id001
-      runtime: *id002
-      search_count: *id002
-      title: *id001
+      id:
+        type: integer
+      original_language:
+        type: string
+      original_title:
+        type: string
+      overview:
+        type: string
+      poster_path:
+        type: string
+      release_date:
+        type: string
+      runtime:
+        type: integer
+      search_count:
+        type: integer
+      title:
+        type: string
       vote_average:
         type: number
     type: object
@@ -41,27 +52,27 @@ paths:
     get:
       description: Get movies from discover endpoint sorted by popularity
       parameters:
-      - &id006
-        description: Page number (1-500)
+      - description: Page number (1-500)
         in: query
         name: page
         type: integer
       produces:
       - application/json
       responses:
-        '200': &id005
+        "200":
           description: OK
           schema:
-            items: &id004
+            items:
               $ref: '#/definitions/models.Movie'
             type: array
-        '400':
+        "400":
           description: Invalid page
-          schema: &id003
+          schema:
             $ref: '#/definitions/models.ErrorResponse'
-        '502':
+        "502":
           description: TMDB error
-          schema: *id003
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Get discover movies
       tags:
       - movies
@@ -77,18 +88,22 @@ paths:
       produces:
       - application/json
       responses:
-        '200':
+        "200":
           description: OK
-          schema: *id004
-        '400':
+          schema:
+            $ref: '#/definitions/models.Movie'
+        "400":
           description: Invalid ID
-          schema: *id003
-        '404':
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
           description: Movie not found
-          schema: *id003
-        '502':
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "502":
           description: TMDB error
-          schema: *id003
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Get movie details
       tags:
       - movies
@@ -98,10 +113,16 @@ paths:
       produces:
       - application/json
       responses:
-        '200': *id005
-        '502':
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Movie'
+            type: array
+        "502":
           description: TMDB error
-          schema: *id003
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Get top popular movies
       tags:
       - movies
@@ -114,17 +135,27 @@ paths:
         name: q
         required: true
         type: string
-      - *id006
+      - description: Page number (1-500)
+        in: query
+        name: page
+        type: integer
       produces:
       - application/json
       responses:
-        '200': *id005
-        '400':
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Movie'
+            type: array
+        "400":
           description: Missing query or invalid page
-          schema: *id003
-        '502':
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "502":
           description: TMDB error
-          schema: *id003
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Search movies
       tags:
       - movies
@@ -134,11 +165,17 @@ paths:
       produces:
       - application/json
       responses:
-        '200': *id005
-        '500':
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Movie'
+            type: array
+        "500":
           description: Redis error
-          schema: *id003
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Get trending movies
       tags:
       - movies
-swagger: '2.0'
+swagger: "2.0"
