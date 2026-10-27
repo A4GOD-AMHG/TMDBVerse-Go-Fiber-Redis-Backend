@@ -1,61 +1,72 @@
 basePath: /
 definitions:
+  models.ErrorResponse:
+    properties:
+      error: &id001
+        type: string
+    type: object
+  models.Genre:
+    properties:
+      id: &id002
+        type: integer
+      name: *id001
+    type: object
   models.Movie:
     properties:
-      id:
-        type: integer
-      original_language:
-        type: string
-      overview:
-        type: string
-      poster_path:
-        type: string
-      release_date:
-        type: string
-      search_count:
-        type: integer
-      title:
-        type: string
+      backdrop_path: *id001
+      genres:
+        items:
+          $ref: '#/definitions/models.Genre'
+        type: array
+      id: *id002
+      original_language: *id001
+      original_title: *id001
+      overview: *id001
+      poster_path: *id001
+      release_date: *id001
+      runtime: *id002
+      search_count: *id002
+      title: *id001
       vote_average:
         type: number
     type: object
 host: localhost:8080
 info:
   contact: {}
-  description: API proxy for The Movie DB
-  title: TMDBZone-Go-Fiber-Backend
-  version: "1.0"
+  description: API proxy for The Movie DB with Redis caching
+  title: TMDBVerse-Go-Fiber-Redis-Backend
+  version: 1.1.0
 paths:
   /discover:
     get:
-      consumes:
-      - application/json
-      description: Get movies from discover endpoint
+      description: Get movies from discover endpoint sorted by popularity
       parameters:
-      - description: Page number
+      - &id006
+        description: Page number (1-500)
         in: query
         name: page
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
-        "200":
+        '200': &id005
           description: OK
           schema:
-            items:
+            items: &id004
               $ref: '#/definitions/models.Movie'
             type: array
-        "500":
-          description: Internal server error
-          schema:
-            type: object
+        '400':
+          description: Invalid page
+          schema: &id003
+            $ref: '#/definitions/models.ErrorResponse'
+        '502':
+          description: TMDB error
+          schema: *id003
       summary: Get discover movies
       tags:
       - movies
   /movies/{id}:
     get:
-      consumes:
-      - application/json
       description: Get complete details for a specific movie
       parameters:
       - description: Movie ID
@@ -66,46 +77,36 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        '200':
           description: OK
-          schema:
-            $ref: '#/definitions/models.Movie'
-        "400":
+          schema: *id004
+        '400':
           description: Invalid ID
-          schema:
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            type: object
+          schema: *id003
+        '404':
+          description: Movie not found
+          schema: *id003
+        '502':
+          description: TMDB error
+          schema: *id003
       summary: Get movie details
       tags:
       - movies
   /popular:
     get:
-      consumes:
-      - application/json
-      description: Get 3 most popular movies
+      description: Get the 3 most popular movies
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Movie'
-            type: array
-        "500":
-          description: Internal server error
-          schema:
-            type: object
+        '200': *id005
+        '502':
+          description: TMDB error
+          schema: *id003
       summary: Get top popular movies
       tags:
       - movies
   /search:
     get:
-      consumes:
-      - application/json
       description: Search movies by title
       parameters:
       - description: Search query
@@ -113,45 +114,31 @@ paths:
         name: q
         required: true
         type: string
-      - description: Page number
-        in: query
-        name: page
-        type: string
+      - *id006
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Movie'
-            type: array
-        "500":
-          description: Internal server error
-          schema:
-            type: object
+        '200': *id005
+        '400':
+          description: Missing query or invalid page
+          schema: *id003
+        '502':
+          description: TMDB error
+          schema: *id003
       summary: Search movies
       tags:
       - movies
   /trending:
     get:
-      consumes:
-      - application/json
       description: Get top 5 trending movies based on searches
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Movie'
-            type: array
-        "500":
-          description: Internal server error
-          schema:
-            type: object
+        '200': *id005
+        '500':
+          description: Redis error
+          schema: *id003
       summary: Get trending movies
       tags:
       - movies
-swagger: "2.0"
+swagger: '2.0'

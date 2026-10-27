@@ -17,10 +17,7 @@ const docTemplate = `{
     "paths": {
         "/discover": {
             "get": {
-                "description": "Get movies from discover endpoint",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get movies from discover endpoint sorted by popularity",
                 "produces": [
                     "application/json"
                 ],
@@ -30,8 +27,8 @@ const docTemplate = `{
                 "summary": "Get discover movies",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Page number",
+                        "type": "integer",
+                        "description": "Page number (1-500)",
                         "name": "page",
                         "in": "query"
                     }
@@ -46,10 +43,16 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "400": {
+                        "description": "Invalid page",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "TMDB error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -58,9 +61,6 @@ const docTemplate = `{
         "/movies/{id}": {
             "get": {
                 "description": "Get complete details for a specific movie",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -87,13 +87,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid ID",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "404": {
+                        "description": "Movie not found",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "TMDB error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -101,10 +107,7 @@ const docTemplate = `{
         },
         "/popular": {
             "get": {
-                "description": "Get 3 most popular movies",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get the 3 most popular movies",
                 "produces": [
                     "application/json"
                 ],
@@ -122,10 +125,10 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "502": {
+                        "description": "TMDB error",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -134,9 +137,6 @@ const docTemplate = `{
         "/search": {
             "get": {
                 "description": "Search movies by title",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -153,8 +153,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Page number",
+                        "type": "integer",
+                        "description": "Page number (1-500)",
                         "name": "page",
                         "in": "query"
                     }
@@ -169,10 +169,16 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "400": {
+                        "description": "Missing query or invalid page",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "TMDB error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -181,9 +187,6 @@ const docTemplate = `{
         "/trending": {
             "get": {
                 "description": "Get top 5 trending movies based on searches",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -202,9 +205,9 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Redis error",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -212,13 +215,44 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "models.Movie": {
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Genre": {
             "type": "object",
             "properties": {
                 "id": {
                     "type": "integer"
                 },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Movie": {
+            "type": "object",
+            "properties": {
+                "backdrop_path": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Genre"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
                 "original_language": {
+                    "type": "string"
+                },
+                "original_title": {
                     "type": "string"
                 },
                 "overview": {
@@ -229,6 +263,9 @@ const docTemplate = `{
                 },
                 "release_date": {
                     "type": "string"
+                },
+                "runtime": {
+                    "type": "integer"
                 },
                 "search_count": {
                     "type": "integer"
@@ -246,12 +283,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "1.1.0",
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "TMDBZone-Go-Fiber-Backend",
-	Description:      "API proxy for The Movie DB",
+	Title:            "TMDBVerse-Go-Fiber-Redis-Backend",
+	Description:      "API proxy for The Movie DB with Redis caching",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

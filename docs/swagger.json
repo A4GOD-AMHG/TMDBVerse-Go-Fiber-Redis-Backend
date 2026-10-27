@@ -1,20 +1,17 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API proxy for The Movie DB",
-        "title": "TMDBZone-Go-Fiber-Backend",
+        "description": "API proxy for The Movie DB with Redis caching",
+        "title": "TMDBVerse-Go-Fiber-Redis-Backend",
         "contact": {},
-        "version": "1.0"
+        "version": "1.1.0"
     },
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
         "/discover": {
             "get": {
-                "description": "Get movies from discover endpoint",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get movies from discover endpoint sorted by popularity",
                 "produces": [
                     "application/json"
                 ],
@@ -24,8 +21,8 @@
                 "summary": "Get discover movies",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Page number",
+                        "type": "integer",
+                        "description": "Page number (1-500)",
                         "name": "page",
                         "in": "query"
                     }
@@ -40,10 +37,16 @@
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "400": {
+                        "description": "Invalid page",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "TMDB error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -52,9 +55,6 @@
         "/movies/{id}": {
             "get": {
                 "description": "Get complete details for a specific movie",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -81,13 +81,19 @@
                     "400": {
                         "description": "Invalid ID",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "404": {
+                        "description": "Movie not found",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "TMDB error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -95,10 +101,7 @@
         },
         "/popular": {
             "get": {
-                "description": "Get 3 most popular movies",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get the 3 most popular movies",
                 "produces": [
                     "application/json"
                 ],
@@ -116,10 +119,10 @@
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "502": {
+                        "description": "TMDB error",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -128,9 +131,6 @@
         "/search": {
             "get": {
                 "description": "Search movies by title",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -147,8 +147,8 @@
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Page number",
+                        "type": "integer",
+                        "description": "Page number (1-500)",
                         "name": "page",
                         "in": "query"
                     }
@@ -163,10 +163,16 @@
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "400": {
+                        "description": "Missing query or invalid page",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "TMDB error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -175,9 +181,6 @@
         "/trending": {
             "get": {
                 "description": "Get top 5 trending movies based on searches",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -196,9 +199,9 @@
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Redis error",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.ErrorResponse"
                         }
                     }
                 }
@@ -206,13 +209,44 @@
         }
     },
     "definitions": {
-        "models.Movie": {
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Genre": {
             "type": "object",
             "properties": {
                 "id": {
                     "type": "integer"
                 },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Movie": {
+            "type": "object",
+            "properties": {
+                "backdrop_path": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Genre"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
                 "original_language": {
+                    "type": "string"
+                },
+                "original_title": {
                     "type": "string"
                 },
                 "overview": {
@@ -223,6 +257,9 @@
                 },
                 "release_date": {
                     "type": "string"
+                },
+                "runtime": {
+                    "type": "integer"
                 },
                 "search_count": {
                     "type": "integer"
